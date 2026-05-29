@@ -77,7 +77,12 @@ export default function App() {
       .filter(s => s.elementorSection)
       .map(s => s.elementorSection)
 
-    const json = { content }
+    const json = {
+      version: '0.4',
+      title: 'Página importada',
+      type: 'page',
+      content,
+    }
 
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
