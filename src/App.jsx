@@ -77,12 +77,7 @@ export default function App() {
       .filter(s => s.elementorSection)
       .map(s => s.elementorSection)
 
-    const json = {
-      version: '0.4',
-      title: 'Página importada desde Lovable',
-      type: 'page',
-      content,
-    }
+    const json = { content }
 
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)

@@ -39,37 +39,95 @@ async function withRetry(fn, maxRetries = 3) {
   throw lastError
 }
 
-const SECTION_PROMPT = `Eres un experto en Elementor Pro. Analiza este bloque HTML y devuelve ÚNICAMENTE JSON válido sin markdown:
+const SECTION_PROMPT = `Eres un experto en Elementor Pro. Analiza este bloque HTML y devuelve ÚNICAMENTE JSON válido sin markdown.
 
+FORMATO EXACTO REQUERIDO (sigue esta estructura sin cambiarla):
 {
   "name": "Nombre descriptivo de la sección (máx 50 chars)",
-  "category": "native" | "native_css" | "native_plugin" | "html",
-  "widgets": ["widget1", "widget2"],
+  "category": "native",
+  "widgets": ["heading", "text-editor"],
   "notes": "Instrucciones concretas de implementación en Elementor (2-3 frases)",
   "elementorSection": {
-    "id": "sec-XXXX",
+    "id": "a1b2c3d",
     "elType": "section",
-    "settings": { "background_color": "#070b18", "padding": { "top": "80", "bottom": "80", "unit": "px" } },
-    "elements": [{
-      "id": "col-XXXX",
-      "elType": "column",
-      "settings": { "_column_size": 100 },
-      "elements": [ ...widgets nativos aquí... ]
-    }]
+    "isInner": false,
+    "settings": {
+      "background_background": "classic",
+      "background_color": "#070b18",
+      "padding": {"unit":"px","top":"80","right":"28","bottom":"80","left":"28","isLinked":false}
+    },
+    "elements": [
+      {
+        "id": "e4f5a6b",
+        "elType": "column",
+        "isInner": false,
+        "settings": {"_column_size": 100, "width": {"unit":"%","size":100}},
+        "elements": [
+          {
+            "id": "c7d8e9f",
+            "elType": "widget",
+            "widgetType": "heading",
+            "isInner": false,
+            "elements": [],
+            "settings": {
+              "title": "Texto del heading aquí",
+              "header_size": "h1",
+              "title_color": "#e9eef9",
+              "typography_typography": "custom",
+              "typography_font_family": "Fraunces",
+              "typography_font_size": {"unit":"px","size":60},
+              "typography_font_weight": "700"
+            }
+          },
+          {
+            "id": "a1b2c3e",
+            "elType": "widget",
+            "widgetType": "text-editor",
+            "isInner": false,
+            "elements": [],
+            "settings": {
+              "editor": "<p>Texto descriptivo aquí</p>",
+              "text_color": "#a9b3cf",
+              "typography_typography": "custom",
+              "typography_font_family": "Inter",
+              "typography_font_size": {"unit":"px","size":18}
+            }
+          },
+          {
+            "id": "f1e2d3c",
+            "elType": "widget",
+            "widgetType": "button",
+            "isInner": false,
+            "elements": [],
+            "settings": {
+              "text": "Texto botón",
+              "button_type": "info",
+              "background_color": "#6c63ff",
+              "button_text_color": "#ffffff",
+              "border_radius": {"unit":"px","top":"8","right":"8","bottom":"8","left":"8","isLinked":true}
+            }
+          }
+        ]
+      }
+    ]
   }
 }
 
-Reglas de categorización:
+REGLAS CRÍTICAS:
+1. Todos los IDs deben ser hex de 7 chars ÚNICOS (ej: "a1b2c3d", "e4f5a6b"). NUNCA repitas un ID.
+2. Todos los widgets DEBEN tener: "elType":"widget", "widgetType":"nombre", "isInner":false, "elements":[]
+3. Sections y columns DEBEN tener "isInner":false pero NO "widgetType"
+4. Heading usa "title" (no "text"). Text-editor usa "editor" con HTML (no "text").
+5. Colores oscuros para el fondo: #070b18, #080d1f, #0d1224 según el contexto
+6. Colores de texto claros: #e9eef9 para títulos, #a9b3cf para párrafos, #6cc4ff para acentos
+
+Categorías:
 - "native": heading, text-editor, button, image, icon, divider, spacer, icon-box, call-to-action
-- "native_css": widget nativo que necesita CSS extra para replicar el diseño exacto
-- "native_plugin": filtros, mapas, sliders avanzados, formularios complejos
-- "html": grids CSS asimétricos, SVG animados, canvas, clip-path complejo
+- "native_css": widget nativo que necesita CSS extra
+- "native_plugin": sliders avanzados, formularios complejos, mapas
+- "html": grids CSS asimétricos, SVG animados, canvas
 
-Widgets disponibles: heading, text-editor, button, image, icon, divider, spacer, video, testimonial, tabs, accordion, toggle, counter, progress-bar, star-rating, image-box, icon-box, call-to-action, flip-box, price-table, nav-menu, search-form, slides, carousel, loop-grid, posts, gallery, form, login, container
-
-Para containers flex usa: { "elType": "container", "settings": { "flex_direction": "row", "flex_gap": { "size": 20, "unit": "px" } }, "elements": [...] }
-
-Genera IDs únicos de 8 chars alfanuméricos para cada elemento.`
+Widgets disponibles: heading, text-editor, button, image, icon, divider, spacer, video, testimonial, tabs, accordion, toggle, counter, progress-bar, star-rating, image-box, icon-box, call-to-action, flip-box, price-table, nav-menu, slides, carousel, form`
 
 export async function analyzeSection(sectionHtml) {
   // Strip inline styles to save tokens, keep structure and text
