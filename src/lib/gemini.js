@@ -59,7 +59,7 @@ Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin 
   }
 }`
 
-export async function analyzeHTML(html) {
+async function callGemini(html) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`
 
   const body = {
@@ -85,7 +85,9 @@ export async function analyzeHTML(html) {
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Gemini API error ${res.status}: ${err}`)
+    const error = new Error(`Gemini API error ${res.status}: ${err}`)
+    error.status = res.status
+    throw error
   }
 
   const data = await res.json()
@@ -93,4 +95,20 @@ export async function analyzeHTML(html) {
   if (!text) throw new Error('Respuesta vacía de Gemini')
 
   return JSON.parse(text)
+}
+
+export async function analyzeHTML(html, { maxRetries = 3, baseDelay = 5000 } = {}) {
+  let lastError
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await callGemini(html)
+    } catch (e) {
+      lastError = e
+      const retryable = e.status === 503 || e.status === 429
+      if (!retryable || attempt === maxRetries) throw e
+      const delay = baseDelay * attempt
+      await new Promise(r => setTimeout(r, delay))
+    }
+  }
+  throw lastError
 }
