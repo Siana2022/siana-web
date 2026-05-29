@@ -51,7 +51,7 @@ const SYSTEM_PROMPT = `Eres un experto en Elementor Pro y desarrollo web. Analiz
 
 4. Genera el JSON de Elementor Pro v0.4 completo y válido.
 
-5. Para CADA sección genera un "previewHtml": un bloque HTML standalone con estilos inline que representa visualmente cómo quedaría la sección en Elementor. Usa fondo oscuro (#070b18), tipografía limpia, colores azul (#3a8dff) para acentos. El previewHtml debe tener su propio <style> embebido y ser autónomo. Hazlo fiel al contenido real de la sección.
+5. Para CADA sección extrae el "originalHtml": el bloque HTML LITERAL y EXACTO tal como aparece en el código fuente de entrada, sin modificar nada. Es el fragmento del HTML original que corresponde a esa sección.
 
 La estructura del JSON de Elementor es:
 {
@@ -86,7 +86,7 @@ Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin 
       "category": "native",
       "widgets": ["heading", "text-editor"],
       "notes": "Explicación breve de por qué esta categoría y qué hacer",
-      "previewHtml": "<div style='...'>...</div>",
+      "originalHtml": "<!-- HTML literal extraído del código fuente -->",
       "elementorSection": { }
     }
   ],

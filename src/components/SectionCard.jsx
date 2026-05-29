@@ -52,32 +52,48 @@ function JsonViewer({ json }) {
   )
 }
 
-function PreviewFrame({ html }) {
-  if (!html) return (
+function PreviewFrame({ sectionHtml, css }) {
+  if (!sectionHtml) return (
     <div style={{
       background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: 8,
       padding: 24, textAlign: 'center', color: '#444', fontSize: 12,
-    }}>Sin preview disponible</div>
+    }}>Sin preview disponible — vuelve a analizar el HTML</div>
   )
+
+  const srcDoc = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#070b18;color:#e9eef9;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+${css || ''}
+</style>
+</head>
+<body>${sectionHtml}</body>
+</html>`
+
   return (
     <iframe
-      srcDoc={html}
+      srcDoc={srcDoc}
       sandbox="allow-same-origin"
       style={{
-        width: '100%', minHeight: 280, border: '1px solid #1e1e1e',
+        width: '100%', minHeight: 300, border: '1px solid #1e1e1e',
         borderRadius: 8, background: '#070b18', display: 'block',
       }}
       onLoad={e => {
         try {
           const h = e.target.contentDocument?.body?.scrollHeight
-          if (h) e.target.style.height = Math.min(h + 16, 500) + 'px'
+          if (h) e.target.style.height = Math.min(h + 24, 600) + 'px'
         } catch {}
       }}
     />
   )
 }
 
-export default function SectionCard({ section: initialSection, index, onUpdate }) {
+export default function SectionCard({ section: initialSection, index, originalCss, onUpdate }) {
   const [section, setSection] = useState(initialSection)
   const [expanded, setExpanded] = useState(false)
   const [tab, setTab] = useState('preview') // 'preview' | 'json'
@@ -196,7 +212,7 @@ export default function SectionCard({ section: initialSection, index, onUpdate }
               ))}
             </div>
 
-            {tab === 'preview' && <PreviewFrame html={section.previewHtml} />}
+            {tab === 'preview' && <PreviewFrame sectionHtml={section.originalHtml} css={originalCss} />}
             {tab === 'json' && section.elementorSection && <JsonViewer json={section.elementorSection} />}
           </div>
 

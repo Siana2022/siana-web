@@ -18,9 +18,15 @@ const PLACEHOLDER = `<!-- Pega aquí tu HTML de Lovable -->
 
 export default function App() {
   const [html, setHtml] = useState('')
+  const [originalCss, setOriginalCss] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  function extractCss(rawHtml) {
+    const matches = [...rawHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)]
+    return matches.map(m => m[1]).join('\n')
+  }
 
   async function handleAnalyze() {
     if (!html.trim()) return
@@ -28,6 +34,7 @@ export default function App() {
     setError(null)
     setResult(null)
     try {
+      setOriginalCss(extractCss(html))
       const data = await analyzeHTML(html)
       setResult(data)
     } catch (e) {
@@ -190,6 +197,7 @@ export default function App() {
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <ResultPanel
               result={result}
+              originalCss={originalCss}
               onDownload={handleDownload}
               isGenerating={false}
               onSectionUpdate={handleSectionUpdate}
