@@ -1,5 +1,5 @@
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const MODEL = 'gemini-2.0-flash'
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
+const MODEL = 'llama-3.3-70b-versatile'
 
 const SYSTEM_PROMPT = `Eres un experto en Elementor Pro y desarrollo web. Analiza código HTML generado por Lovable y:
 
@@ -30,7 +30,7 @@ La estructura del JSON de Elementor es:
         "elType": "column",
         "settings": { "_column_size": 100 },
         "elements": [
-          // widgets aquí con elType, widgetType, settings
+          { "id": "wid12345", "elType": "widget", "widgetType": "heading", "settings": { "title": "Texto", "header_size": "h1" } }
         ]
       }]
     }
@@ -39,75 +39,68 @@ La estructura del JSON de Elementor es:
 
 Para containers flex: { "id": "...", "elType": "container", "settings": { "flex_direction": "row", "flex_gap": { "size": 20, "unit": "px" }, "flex_align_items": "stretch" }, "elements": [...] }
 
-Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin explicaciones:
+Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin bloques de código, sin explicaciones:
 {
   "sections": [
     {
       "id": "section-1",
       "name": "Nombre descriptivo de la sección",
-      "category": "native" | "native_css" | "native_plugin" | "html",
+      "category": "native",
       "widgets": ["heading", "text-editor"],
       "notes": "Explicación breve de por qué esta categoría y qué hacer",
-      "elementorSection": { ... objeto JSON de Elementor para esta sección ... }
+      "elementorSection": { }
     }
   ],
   "elementorJson": {
     "version": "0.4",
     "title": "Página importada desde Lovable",
     "type": "page",
-    "content": [ ... todas las secciones ... ]
+    "content": []
   }
 }`
 
-async function callGemini(html) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`
-
-  const body = {
-    system_instruction: {
-      parts: [{ text: SYSTEM_PROMPT }]
-    },
-    contents: [{
-      parts: [{
-        text: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${html}`
-      }]
-    }],
-    generationConfig: {
-      temperature: 0.2,
-      responseMimeType: 'application/json'
-    }
-  }
-
-  const res = await fetch(url, {
+async function callGroq(html) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${html}` }
+      ]
+    })
   })
 
   if (!res.ok) {
     const err = await res.text()
-    const error = new Error(`Gemini API error ${res.status}: ${err}`)
+    const error = new Error(`Groq API error ${res.status}: ${err}`)
     error.status = res.status
     throw error
   }
 
   const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Respuesta vacía de Gemini')
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('Respuesta vacía de Groq')
 
   return JSON.parse(text)
 }
 
-export async function analyzeHTML(html, { maxRetries = 3, baseDelay = 5000 } = {}) {
+export async function analyzeHTML(html, { maxRetries = 3, baseDelay = 3000 } = {}) {
   let lastError
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await callGemini(html)
+      return await callGroq(html)
     } catch (e) {
       lastError = e
       const retryable = e.status === 503 || e.status === 429
       if (!retryable || attempt === maxRetries) throw e
-      const delay = baseDelay * attempt
-      await new Promise(r => setTimeout(r, delay))
+      await new Promise(r => setTimeout(r, baseDelay * attempt))
     }
   }
   throw lastError
