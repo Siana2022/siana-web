@@ -29,7 +29,7 @@ function StatPill({ category, count }) {
   )
 }
 
-export default function ResultPanel({ result, onDownload, onGenerateJson, isGenerating }) {
+export default function ResultPanel({ result, onDownload, onGenerateJson, isGenerating, onSectionUpdate }) {
   if (!result) return (
     <div style={{
       display: 'flex',
@@ -72,7 +72,7 @@ export default function ResultPanel({ result, onDownload, onGenerateJson, isGene
       {/* Section cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, overflowY: 'auto' }}>
         {result.sections.map((section, i) => (
-          <SectionCard key={section.id || i} section={section} index={i} />
+          <SectionCard key={section.id || i} section={section} index={i} onUpdate={onSectionUpdate} />
         ))}
       </div>
 

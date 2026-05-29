@@ -37,6 +37,19 @@ export default function App() {
     }
   }
 
+  function handleSectionUpdate(index, updatedSection) {
+    setResult(prev => {
+      const sections = [...prev.sections]
+      sections[index] = updatedSection
+      const content = sections.map(s => s.elementorSection).filter(Boolean)
+      return {
+        ...prev,
+        sections,
+        elementorJson: { ...prev.elementorJson, content },
+      }
+    })
+  }
+
   function handleDownload() {
     if (!result?.elementorJson) return
     const blob = new Blob([JSON.stringify(result.elementorJson, null, 2)], { type: 'application/json' })
@@ -179,6 +192,7 @@ export default function App() {
               result={result}
               onDownload={handleDownload}
               isGenerating={false}
+              onSectionUpdate={handleSectionUpdate}
             />
           </div>
         </div>

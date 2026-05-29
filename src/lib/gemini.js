@@ -11,6 +11,32 @@ function stripForAnalysis(html) {
     .slice(0, 24000)
 }
 
+async function groqCall(messages) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages
+    })
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    const error = new Error(`Groq API error ${res.status}: ${err}`)
+    error.status = res.status
+    throw error
+  }
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('Respuesta vacía de Groq')
+  return JSON.parse(text)
+}
+
 const SYSTEM_PROMPT = `Eres un experto en Elementor Pro y desarrollo web. Analiza código HTML generado por Lovable y:
 
 1. Identifica cada sección/bloque principal del HTML
@@ -24,6 +50,8 @@ const SYSTEM_PROMPT = `Eres un experto en Elementor Pro y desarrollo web. Analiz
    heading, text-editor, button, image, icon, divider, spacer, video, testimonial, tabs, accordion, toggle, counter, progress-bar, star-rating, image-box, icon-box, call-to-action, flip-box, price-table, nav-menu, search-form, slides, carousel, loop-grid, posts, gallery, form, login, container
 
 4. Genera el JSON de Elementor Pro v0.4 completo y válido.
+
+5. Para CADA sección genera un "previewHtml": un bloque HTML standalone con estilos inline que representa visualmente cómo quedaría la sección en Elementor. Usa fondo oscuro (#070b18), tipografía limpia, colores azul (#3a8dff) para acentos. El previewHtml debe tener su propio <style> embebido y ser autónomo. Hazlo fiel al contenido real de la sección.
 
 La estructura del JSON de Elementor es:
 {
@@ -58,6 +86,7 @@ Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin 
       "category": "native",
       "widgets": ["heading", "text-editor"],
       "notes": "Explicación breve de por qué esta categoría y qué hacer",
+      "previewHtml": "<div style='...'>...</div>",
       "elementorSection": { }
     }
   ],
@@ -69,43 +98,19 @@ Responde ÚNICAMENTE con JSON válido en este formato exacto, sin markdown, sin 
   }
 }`
 
-async function callGroq(html) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${stripForAnalysis(html)}` }
-      ]
-    })
-  })
+const MODIFY_PROMPT = `Eres un experto en Elementor Pro. El usuario quiere modificar una sección específica del JSON de Elementor.
+Devuelve ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni explicaciones:
+{
+  "elementorSection": { ... el JSON actualizado de la sección ... },
+  "previewHtml": "... HTML preview actualizado ...",
+  "notes": "... notas actualizadas ..."
+}`
 
-  if (!res.ok) {
-    const err = await res.text()
-    const error = new Error(`Groq API error ${res.status}: ${err}`)
-    error.status = res.status
-    throw error
-  }
-
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('Respuesta vacía de Groq')
-
-  return JSON.parse(text)
-}
-
-export async function analyzeHTML(html, { maxRetries = 3, baseDelay = 3000 } = {}) {
+async function withRetry(fn, { maxRetries = 3, baseDelay = 3000 } = {}) {
   let lastError
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await callGroq(html)
+      return await fn()
     } catch (e) {
       lastError = e
       const retryable = e.status === 503 || e.status === 429
@@ -114,4 +119,18 @@ export async function analyzeHTML(html, { maxRetries = 3, baseDelay = 3000 } = {
     }
   }
   throw lastError
+}
+
+export async function analyzeHTML(html) {
+  return withRetry(() => groqCall([
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${stripForAnalysis(html)}` }
+  ]))
+}
+
+export async function modifySection(section, modification) {
+  return withRetry(() => groqCall([
+    { role: 'system', content: MODIFY_PROMPT },
+    { role: 'user', content: `Sección actual:\nNombre: ${section.name}\nJSON actual:\n${JSON.stringify(section.elementorSection, null, 2)}\n\nModificación solicitada: ${modification}` }
+  ]))
 }
