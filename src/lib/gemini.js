@@ -1,6 +1,16 @@
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY
 const MODEL = 'llama-3.3-70b-versatile'
 
+function stripForAnalysis(html) {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/\s*style="[^"]*"/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 24000)
+}
+
 const SYSTEM_PROMPT = `Eres un experto en Elementor Pro y desarrollo web. Analiza código HTML generado por Lovable y:
 
 1. Identifica cada sección/bloque principal del HTML
@@ -72,7 +82,7 @@ async function callGroq(html) {
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${html}` }
+        { role: 'user', content: `Analiza este HTML de Lovable y genera el análisis y JSON de Elementor:\n\n${stripForAnalysis(html)}` }
       ]
     })
   })
